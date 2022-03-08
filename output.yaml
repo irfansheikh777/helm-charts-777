@@ -1,0 +1,588 @@
+---
+# Source: netbox/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: RELEASE-NAME-netbox
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+---
+# Source: netbox/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: RELEASE-NAME-netbox
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  db_password: "dGVzdDEyMw=="
+  email_password: ""
+  napalm_password: ""
+  redis_tasks_password: "dGVzdDEyMw=="
+  redis_cache_password: "dGVzdDEyMw=="
+  secret_key: SWhdOyNML0dRZFFDRTdTTnZqSnRZZTFHbFpqSktMOytXRzJKez9dOEpMbWlmUWxvTEoqTXNOciRyVVJw
+  superuser_password: YWRtaW4=
+  superuser_api_token: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWYwMTIzNDU2Nw==
+---
+# Source: netbox/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: RELEASE-NAME-netbox
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+data:
+  configuration.py: |
+    import re
+    import yaml
+
+    from pathlib import Path
+
+    def _load_yaml():
+      extraConfigBase = Path('/run/config/extra')
+      configFiles = [Path('/run/config/netbox/netbox.yaml')]
+
+      configFiles.extend(sorted(extraConfigBase.glob('*/*.yaml')))
+
+      for configFile in configFiles:
+        with open(configFile, 'r') as f:
+          config = yaml.safe_load(f)
+
+        globals().update(config)
+
+    def _load_secret(name, key):
+      path = "/run/secrets/{name}/{key}".format(name=name, key=key)
+      with open(path, 'r') as f:
+        return f.read()
+
+    _load_yaml()
+
+    DATABASE['PASSWORD'] = _load_secret('netbox', 'db_password')
+    EMAIL['PASSWORD'] = _load_secret('netbox', 'email_password')
+    NAPALM_PASSWORD = _load_secret('netbox', 'napalm_password')
+    REDIS['tasks']['PASSWORD'] = _load_secret('netbox', 'redis_tasks_password')
+    REDIS['caching']['PASSWORD'] = _load_secret('netbox', 'redis_cache_password')
+    SECRET_KEY = _load_secret('netbox', 'secret_key')
+
+    # Post-process certain values
+    CORS_ORIGIN_REGEX_WHITELIST = [re.compile(r) for r
+                                   in CORS_ORIGIN_REGEX_WHITELIST]
+
+  netbox.yaml: |
+    ALLOWED_HOSTS: ["*"]
+
+    DATABASE:
+      HOST: "localhost"
+      USER: "netboxadmin"
+      NAME: "netbox"
+      PORT: 5432
+      OPTIONS:
+        sslmode: "prefer"
+      CONN_MAX_AGE: 300
+
+    ADMINS: []
+    ALLOWED_URL_SCHEMES: ["file","ftp","ftps","http","https","irc","mailto","sftp","ssh","tel","telnet","tftp","vnc","xmpp"]
+    BANNER_TOP: ""
+    BANNER_BOTTOM: ""
+    BANNER_LOGIN: ""
+    BASE_PATH: ""
+    CHANGELOG_RETENTION: 90
+    CORS_ORIGIN_ALLOW_ALL: false
+    CORS_ORIGIN_WHITELIST: []
+    CORS_ORIGIN_REGEX_WHITELIST: []
+    DEBUG: false
+
+    EMAIL:
+      SERVER: "localhost"
+      PORT: 25
+      USERNAME: ""
+      USE_SSL: false
+      USE_TLS: false
+      TIMEOUT: 10
+      FROM_EMAIL: ""
+
+    ENFORCE_GLOBAL_UNIQUE: false
+    EXEMPT_VIEW_PERMISSIONS: []
+    GRAPHQL_ENABLED: true
+    HTTP_PROXIES: null
+    INTERNAL_IPS: ["127.0.0.1","::1"]
+    LOGGING: {}
+    LOGIN_PERSISTENCE: false
+    LOGIN_REQUIRED: false
+    LOGIN_TIMEOUT: 1209600
+    MAINTENANCE_MODE: false
+    MAPS_URL: "https://maps.google.com/?q="
+    MAX_PAGE_SIZE: 1000
+    MEDIA_ROOT: /opt/netbox/netbox/media
+    STORAGE_BACKEND: 
+    STORAGE_CONFIG:  {}
+    METRICS_ENABLED: false
+    NAPALM_USERNAME: ""
+    NAPALM_TIMEOUT: 30
+    NAPALM_ARGS: {}
+    PAGINATE_COUNT: 50
+    PLUGINS: []
+    PLUGINS_CONFIG: {}
+    PREFER_IPV4: false
+    RACK_ELEVATION_DEFAULT_UNIT_HEIGHT: 22
+    RACK_ELEVATION_DEFAULT_UNIT_WIDTH: 220
+    REMOTE_AUTH_ENABLED: false
+    REMOTE_AUTH_BACKEND: "netbox.authentication.RemoteUserBackend"
+    REMOTE_AUTH_HEADER: "HTTP_REMOTE_USER"
+    REMOTE_AUTH_AUTO_CREATE_USER: true
+    REMOTE_AUTH_DEFAULT_GROUPS: []
+    REMOTE_AUTH_DEFAULT_PERMISSIONS: {}
+    REMOTE_AUTH_GROUP_SYNC_ENABLED: false
+    REMOTE_AUTH_GROUP_HEADER: "HTTP_REMOTE_USER_GROUP"
+    REMOTE_AUTH_SUPERUSER_GROUPS: []
+    REMOTE_AUTH_SUPERUSERS: []
+    REMOTE_AUTH_STAFF_GROUPS: []
+    REMOTE_AUTH_STAFF_USERS: []
+    REMOTE_AUTH_GROUP_SEPARATOR: "|"
+    RELEASE_CHECK_URL: null
+
+    REDIS:
+      tasks:
+        HOST: "localhost"
+        PORT: 6379
+        DATABASE: 0
+        SSL: false
+        INSECURE_SKIP_TLS_VERIFY: false
+      caching:
+        HOST: "localhost"
+        PORT: 6379
+        DATABASE: 1
+        SSL: false
+        INSECURE_SKIP_TLS_VERIFY: false
+
+    REPORTS_ROOT: /opt/netbox/netbox/reports
+    RQ_DEFAULT_TIMEOUT: 300
+    SCRIPTS_ROOT: /opt/netbox/netbox/scripts
+    SESSION_COOKIE_NAME: sessionid
+    TIME_ZONE: "UTC"
+    DATE_FORMAT: "N j, Y"
+    SHORT_DATE_FORMAT: "Y-m-d"
+    TIME_FORMAT: "g:i a"
+    SHORT_TIME_FORMAT: "H:i:s"
+    DATETIME_FORMAT: "N j, Y g:i a"
+    SHORT_DATETIME_FORMAT: "Y-m-d H:i"
+---
+# Source: netbox/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: RELEASE-NAME-netbox
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/component: netbox
+---
+# Source: netbox/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-netbox
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: netbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netbox
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/component: netbox
+  template:
+    metadata:
+      annotations:
+        checksum/config: ca7384007824ce2aaef0013c63d67ee5784481f00354cf7af7c4a5220645b096
+        checksum/secret: 66f096541fcc1e88ae407d5cfaf11b7644e847593510e208dceaefdf6773517b
+      labels:
+        app.kubernetes.io/name: netbox
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/component: netbox
+    spec:
+      serviceAccountName: RELEASE-NAME-netbox
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+      initContainers:
+        - name: init-dirs
+          image: "busybox:1.32.1"
+          imagePullPolicy: IfNotPresent
+          command: [/bin/sh, -c, mkdir -p /opt/unit/state /opt/unit/tmp]
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts:
+            - name: optunit
+              mountPath: /opt/unit
+      containers:
+        - name: netbox
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "netboxcommunity/netbox:v3.0.11"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SUPERUSER_NAME
+              value: "admin"
+            - name: SUPERUSER_EMAIL
+              value: "admin@example.com"
+            - name: SKIP_STARTUP_SCRIPTS
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /login/
+              port: http
+          volumeMounts:
+            - name: config
+              mountPath: /etc/netbox/config/configuration.py
+              subPath: configuration.py
+              readOnly: true
+            - name: config
+              mountPath: /run/config/netbox
+              readOnly: true
+            - name: secrets
+              mountPath: /run/secrets/netbox
+              readOnly: true
+            - name: netbox-tmp
+              mountPath: /tmp
+            - name: media
+              mountPath: /opt/netbox/netbox/media
+              subPath: ""
+            - name: optunit
+              mountPath: /opt/unit
+            - name: secrets
+              mountPath: /run/secrets/superuser_password
+              subPath: superuser_password
+              readOnly: true
+            - name: secrets
+              mountPath: /run/secrets/superuser_api_token
+              subPath: superuser_api_token
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: RELEASE-NAME-netbox
+        - name: secrets
+          projected:
+            sources:
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    # Used by netbox-docker entry scripts
+                    - key: superuser_password
+                      path: superuser_password
+                    - key: superuser_api_token
+                      path: superuser_api_token
+                    # Used by our configuration
+                    - key: email_password
+                      path: email_password
+                    - key: napalm_password
+                      path: napalm_password
+                    - key: secret_key
+                      path: secret_key
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "db_password"
+                      path: db_password
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "redis_tasks_password"
+                      path: redis_tasks_password
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "redis_cache_password"
+                      path: redis_cache_password
+        - name: netbox-tmp
+          emptyDir:
+            medium: Memory
+        - name: optunit
+          emptyDir:
+            medium: Memory
+        - name: media
+          persistentVolumeClaim:
+            claimName: nodebox-pvc-media
+---
+# Source: netbox/templates/worker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: RELEASE-NAME-netbox-worker
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: netbox
+      app.kubernetes.io/instance: RELEASE-NAME
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      annotations:
+        checksum/config: ca7384007824ce2aaef0013c63d67ee5784481f00354cf7af7c4a5220645b096
+        checksum/secret: 21fee6e25119cc29f482d890deef1a90499ce9529f4041ddda3c44edde32e664
+      labels:
+        app.kubernetes.io/name: netbox
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/component: worker
+    spec:
+      serviceAccountName: RELEASE-NAME-netbox
+      securityContext:
+        fsGroup: 1000
+        runAsNonRoot: true
+      containers:
+        - name: netbox-worker
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 1000
+          image: "netboxcommunity/netbox:v3.0.11"
+          command:
+            - /opt/netbox/venv/bin/python
+            - /opt/netbox/netbox/manage.py
+            - rqworker
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: /etc/netbox/config/configuration.py
+              subPath: configuration.py
+              readOnly: true
+            - name: config
+              mountPath: /run/config/netbox
+              readOnly: true
+            - name: secrets
+              mountPath: /run/secrets/netbox
+              readOnly: true
+            - name: netbox-tmp
+              mountPath: /tmp
+            - name: media
+              mountPath: /opt/netbox/netbox/media
+              subPath: ""
+      volumes:
+        - name: config
+          configMap:
+            name: RELEASE-NAME-netbox
+        - name: secrets
+          projected:
+            sources:
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    # Used by our configuration
+                    - key: email_password
+                      path: email_password
+                    - key: napalm_password
+                      path: napalm_password
+                    - key: secret_key
+                      path: secret_key
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "db_password"
+                      path: db_password
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "redis_tasks_password"
+                      path: redis_tasks_password
+              - secret:
+                  name: "RELEASE-NAME-netbox"
+                  items:
+                    - key: "redis_cache_password"
+                      path: redis_cache_password
+        - name: netbox-tmp
+          emptyDir:
+            medium: Memory
+        - name: media
+          persistentVolumeClaim:
+            claimName: nodebox-pvc-worker-media
+---
+# Source: netbox/templates/cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: RELEASE-NAME-netbox-housekeeping
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: housekeeping
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 5
+  schedule: "0 0 * * *"
+  successfulJobsHistoryLimit: 5
+  suspend: false
+  jobTemplate:
+    metadata:
+      labels:
+        helm.sh/chart: netbox-4.0.1
+        app.kubernetes.io/name: netbox
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/version: "v3.0.11"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: netbox
+            app.kubernetes.io/instance: RELEASE-NAME
+            app.kubernetes.io/component: housekeeping
+        spec:
+          serviceAccountName: RELEASE-NAME-netbox
+          securityContext:
+            fsGroup: 1000
+            runAsNonRoot: true
+          containers:
+            - name: netbox-housekeeping
+              securityContext:
+                capabilities:
+                  drop:
+                  - ALL
+                readOnlyRootFilesystem: true
+                runAsGroup: 1000
+                runAsNonRoot: true
+                runAsUser: 1000
+              image: "netboxcommunity/netbox:v3.0.11"
+              command:
+                - /opt/netbox/venv/bin/python
+                - /opt/netbox/netbox/manage.py
+                - housekeeping
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: config
+                  mountPath: /etc/netbox/config/configuration.py
+                  subPath: configuration.py
+                  readOnly: true
+                - name: config
+                  mountPath: /run/config/netbox
+                  readOnly: true
+                - name: secrets
+                  mountPath: /run/secrets/netbox
+                  readOnly: true
+                - name: netbox-tmp
+                  mountPath: /tmp
+                - name: media
+                  mountPath: /opt/netbox/netbox/media
+                  subPath: ""
+          volumes:
+            - name: config
+              configMap:
+                name: RELEASE-NAME-netbox
+            - name: secrets
+              projected:
+                sources:
+                  - secret:
+                      name: "RELEASE-NAME-netbox"
+                      items:
+                        # Used by our configuration
+                        - key: email_password
+                          path: email_password
+                        - key: napalm_password
+                          path: napalm_password
+                        - key: secret_key
+                          path: secret_key
+                  - secret:
+                      name: "RELEASE-NAME-netbox"
+                      items:
+                        - key: "db_password"
+                          path: db_password
+                  - secret:
+                      name: "RELEASE-NAME-netbox"
+                      items:
+                        - key: "redis_tasks_password"
+                          path: redis_tasks_password
+                  - secret:
+                      name: "RELEASE-NAME-netbox"
+                      items:
+                        - key: "redis_cache_password"
+                          path: redis_cache_password
+            - name: netbox-tmp
+              emptyDir:
+                medium: Memory
+            - name: media
+              persistentVolumeClaim:
+                claimName: nodebox-pvc-media
+          restartPolicy: OnFailure
+---
+# Source: netbox/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "RELEASE-NAME-netbox-test-connection"
+  labels:
+    helm.sh/chart: netbox-4.0.1
+    app.kubernetes.io/name: netbox
+    app.kubernetes.io/instance: RELEASE-NAME
+    app.kubernetes.io/version: "v3.0.11"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['RELEASE-NAME-netbox:80']
+  restartPolicy: Never
