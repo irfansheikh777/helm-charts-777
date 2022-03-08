@@ -197,7 +197,7 @@ spec:
         {{- if .Values.reportsPersistence.enabled }}
         - name: reports
           persistentVolumeClaim:
-            claimName: {{ .Values.reportsPersistence.existingClaim | default (printf "%s-reports" (include "netbox.fullname" .)) }}
+            claimName: {{ .Values.reportsPersistence.existingClaimreport | default (printf "%s-reports" (include "netbox.fullname" .)) }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

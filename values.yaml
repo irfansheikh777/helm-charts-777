@@ -299,7 +299,7 @@ postgresql:
   ## Deploy PostgreSQL using bundled chart
   # To use an external database, set this to false and configure the settings
   # under externalDatabase
-  enabled: true
+  enabled: false
 
   postgresqlUsername: netbox
   postgresqlDatabase: netbox
@@ -310,8 +310,8 @@ externalDatabase:
   host: localhost
   port: 5432
   database: netbox
-  username: netbox
-  password: ""
+  username: netboxadmin
+  password: "test123"
   existingSecretName: ""
   existingSecretKey: postgresql-password
 
@@ -323,7 +323,7 @@ redis:
   ## Deploy Redis using bundled chart
   # To use an external Redis instance, set this to false and configure the
   # settings under *both* tasksRedis *and* cachingRedis
-  enabled: true
+  enabled: false
 
 tasksRedis:
   database: 0
@@ -332,13 +332,13 @@ tasksRedis:
 
   # Used only when redis.enabled is false. host and port are not used if
   # sentinels are given.
-  host: netbox-redis
+  host: localhost
   port: 6379
   sentinels: []
   #  - mysentinel:26379
   sentinelService: netbox-redis
   sentinelTimeout: 300
-  password: ""
+  password: "test123"
   existingSecretName: ""
   existingSecretKey: redis-password
 
@@ -349,13 +349,13 @@ cachingRedis:
 
   # Used only when redis.enabled is false. host and port are not used if
   # sentinels are given.
-  host: netbox-redis
+  host: localhost
   port: 6379
   sentinels: []
   #  - mysentinel:26379
   sentinelService: netbox-redis
   sentinelTimeout: 300
-  password: ""
+  password: "test123"
   existingSecretName: ""
   existingSecretKey: redis-password
 
@@ -377,7 +377,10 @@ persistence:
   enabled: true
   ##
   ## Existing claim to use
-  existingClaim: ""
+  existingClaim: "nodebox-pvc-media"
+  existingClaimreport : "nodebox-pvc-report"
+  existingClaimworker: "nodebox-pvc-worker-media"
+  existingClaimreportworker : "nodebox-pvc-worker-report"
   ## Existing claim's subPath to use, e.g. "media" (optional)
   subPath: ""
   ##
